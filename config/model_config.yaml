@@ -1,0 +1,27 @@
+# Model Architecture
+model:
+  hidden_size: 128
+  num_layers: 2
+  dropout: 0.2
+
+# Data Processing
+data:
+  sequence_length: 60
+  min_history_days: 1500
+  target_column: close_price
+
+# Training
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  epochs: 100
+  early_stopping_patience: 10
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+
+# Paths
+paths:
+  saved_models: ./saved_models/
+  experiments: ./experiments/
+  logs: ./logs/
