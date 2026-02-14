@@ -1,55 +1,77 @@
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, BarChart3, History, Star } from 'lucide-react';
+import { TrendingUp, BarChart3, Star, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 function Navbar() {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
   
   const isActive = (path) => location.pathname === path;
   
+  const linkClass = (path) => `
+    flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300
+    ${isActive(path) 
+      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-[0_8px_30px_-5px_rgba(59,130,246,0.5)]' 
+      : theme === 'light'
+        ? 'text-slate-700 hover:bg-slate-100'
+        : 'text-slate-300 hover:bg-slate-800'
+    }
+  `;
+
   return (
-    <nav className="sticky top-0 z-50 bg-dark-card/80 backdrop-blur-xl border-b border-white/10 px-8 py-4 animate-[slideDown_0.4s_ease-out]">
-      <div className="max-w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3 text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-          <TrendingUp size={28} className="text-blue-500" />
-          <span>NSE Stock Predictor</span>
-        </div>
-        
-        <div className="flex gap-4">
-          <Link 
-            to="/" 
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 border-2 ${
-              isActive('/') 
-                ? 'text-blue-500 bg-blue-500/15 border-blue-500/30' 
-                : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-blue-500/10 hover:border-blue-500/20'
-            }`}
-          >
-            <BarChart3 size={20} />
-            <span>Predictions</span>
+    <nav className={`${
+      theme === 'light' 
+        ? 'bg-white border-slate-200' 
+        : 'bg-dark-card/80 border-white/10'
+    } backdrop-blur-xl border-b sticky top-0 z-50 transition-colors duration-300`}>
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex items-center justify-between h-20">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className={`w-12 h-12 rounded-xl ${
+              theme === 'light' 
+                ? 'bg-gradient-to-br from-blue-500 to-purple-600' 
+                : 'bg-gradient-to-br from-blue-500 to-purple-600'
+            } flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg`}>
+              <TrendingUp className="text-white" size={24} />
+            </div>
+            <span className={`text-2xl font-bold ${
+              theme === 'light' ? 'text-slate-900' : 'text-slate-100'
+            } tracking-tight`}>
+              StockPredict
+            </span>
           </Link>
-          
-          <Link 
-            to="/comparison" 
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 border-2 ${
-              isActive('/comparison') 
-                ? 'text-blue-500 bg-blue-500/15 border-blue-500/30' 
-                : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-blue-500/10 hover:border-blue-500/20'
-            }`}
-          >
-            <History size={20} />
-            <span>Compare</span>
-          </Link>
-          
-          <Link 
-            to="/watchlist" 
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 border-2 ${
-              isActive('/watchlist') 
-                ? 'text-blue-500 bg-blue-500/15 border-blue-500/30' 
-                : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-blue-500/10 hover:border-blue-500/20'
-            }`}
-          >
-            <Star size={20} />
-            <span>Watchlist</span>
-          </Link>
+
+          {/* Navigation Links */}
+          <div className="flex items-center gap-3">
+            <Link to="/predictions" className={linkClass('/predictions')}>
+              <TrendingUp size={20} />
+              Predictions
+            </Link>
+            
+            <Link to="/comparison" className={linkClass('/comparison')}>
+              <BarChart3 size={20} />
+              Comparison
+            </Link>
+            
+            <Link to="/watchlist" className={linkClass('/watchlist')}>
+              <Star size={20} />
+              Watchlist
+            </Link>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className={`ml-4 p-3 rounded-xl transition-all duration-300 ${
+                theme === 'light'
+                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+          </div>
         </div>
       </div>
     </nav>

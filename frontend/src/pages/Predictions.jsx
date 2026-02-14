@@ -5,11 +5,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Calendar, DollarSign, Activity, Search, Maximize2, Download, FileSpreadsheet } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { useTheme } from '../context/ThemeContext';
 import * as XLSX from 'xlsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 function Predictions() {
+  const { theme } = useTheme();
   const [stocks, setStocks] = useState([]);
   const [selectedStock, setSelectedStock] = useState(null);
   const [daysAhead, setDaysAhead] = useState(5);
@@ -88,25 +90,25 @@ function Predictions() {
   const selectStyles = {
     control: (base, state) => ({
       ...base,
-      background: '#1e293b',
-      borderColor: state.isFocused ? '#3b82f6' : '#334155',
+      background: theme === 'light' ? '#ffffff' : '#1e293b',
+      borderColor: state.isFocused ? '#3b82f6' : (theme === 'light' ? '#e2e8f0' : '#334155'),
       borderWidth: '2px',
       borderRadius: '12px',
       padding: '0.375rem 0.5rem',
       boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.1)' : 'none',
       '&:hover': {
-        borderColor: '#475569'
+        borderColor: theme === 'light' ? '#cbd5e1' : '#475569'
       },
       cursor: 'text'
     }),
     menu: (base) => ({
       ...base,
-      background: '#1e293b',
-      border: '2px solid #334155',
+      background: theme === 'light' ? '#ffffff' : '#1e293b',
+      border: `2px solid ${theme === 'light' ? '#e2e8f0' : '#334155'}`,
       borderRadius: '12px',
       marginTop: '8px',
       overflow: 'hidden',
-      boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+      boxShadow: theme === 'light' ? '0 10px 40px rgba(0, 0, 0, 0.1)' : '0 10px 40px rgba(0, 0, 0, 0.5)'
     }),
     menuList: (base) => ({
       ...base,
@@ -116,21 +118,21 @@ function Predictions() {
         width: '8px'
       },
       '::-webkit-scrollbar-track': {
-        background: '#0f172a',
+        background: theme === 'light' ? '#f1f5f9' : '#0f172a',
         borderRadius: '4px'
       },
       '::-webkit-scrollbar-thumb': {
-        background: '#475569',
+        background: theme === 'light' ? '#cbd5e1' : '#475569',
         borderRadius: '4px'
       },
       '::-webkit-scrollbar-thumb:hover': {
-        background: '#64748b'
+        background: theme === 'light' ? '#94a3b8' : '#64748b'
       }
     }),
     option: (base, state) => ({
       ...base,
       background: state.isFocused ? '#3b82f6' : 'transparent',
-      color: '#e2e8f0',
+      color: state.isFocused ? '#ffffff' : (theme === 'light' ? '#0f172a' : '#e2e8f0'),
       padding: '12px 16px',
       borderRadius: '8px',
       cursor: 'pointer',
@@ -141,16 +143,16 @@ function Predictions() {
     }),
     singleValue: (base) => ({
       ...base,
-      color: '#e2e8f0',
+      color: theme === 'light' ? '#0f172a' : '#e2e8f0',
       fontWeight: '500'
     }),
     input: (base) => ({
       ...base,
-      color: '#e2e8f0'
+      color: theme === 'light' ? '#0f172a' : '#e2e8f0'
     }),
     placeholder: (base) => ({
       ...base,
-      color: '#64748b'
+      color: theme === 'light' ? '#64748b' : '#64748b'
     }),
     dropdownIndicator: (base) => ({
       ...base,
@@ -168,17 +170,23 @@ function Predictions() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#1e293b] border-2 border-blue-500/30 rounded-xl p-4 shadow-2xl">
-          <p className="text-slate-300 font-semibold mb-2">{data.date}</p>
-          <p className="text-slate-200 text-lg font-bold">
+        <div className={`${
+          theme === 'light' 
+            ? 'bg-white border-blue-500/50' 
+            : 'bg-[#1e293b] border-blue-500/30'
+        } border-2 rounded-xl p-4 shadow-2xl`}>
+          <p className={`${theme === 'light' ? 'text-slate-700' : 'text-slate-300'} font-semibold mb-2`}>
+            {data.date}
+          </p>
+          <p className={`${theme === 'light' ? 'text-slate-900' : 'text-slate-200'} text-lg font-bold`}>
             ₹{data.price.toFixed(2)}
           </p>
           {data.return !== undefined && (
-            <p className={`text-sm font-semibold mt-1 ${data.return >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-sm font-semibold mt-1 ${data.return >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               {data.return >= 0 ? '+' : ''}{data.return.toFixed(2)}% daily return
             </p>
           )}
-          <p className="text-xs text-slate-400 mt-1">
+          <p className={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'} mt-1`}>
             {data.isActual ? 'Current Price' : 'Predicted Price'}
           </p>
         </div>
@@ -189,7 +197,6 @@ function Predictions() {
 
   const exportToCSV = () => {
     if (!prediction) return;
-
     const csvData = [
       ['Stock Symbol', selectedStock.value],
       ['Current Price', prediction.current_price],
@@ -198,11 +205,9 @@ function Predictions() {
       [''],
       ['Date', 'Predicted Price', 'Daily Return (%)']
     ];
-
     prediction.predictions.forEach(p => {
       csvData.push([p.date, p.predicted_price.toFixed(2), p.predicted_return.toFixed(2)]);
     });
-
     const csvContent = csvData.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -213,9 +218,7 @@ function Predictions() {
 
   const exportToExcel = () => {
     if (!prediction) return;
-
     const wb = XLSX.utils.book_new();
-
     const summaryData = [
       ['Stock Symbol', selectedStock.value],
       ['Current Price', prediction.current_price],
@@ -225,30 +228,27 @@ function Predictions() {
       [''],
       ['Generated On', new Date().toLocaleString()]
     ];
-
     const summaryWS = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
-
-    const predictionsData = [
-      ['Date', 'Predicted Price', 'Daily Return (%)']
-    ];
-
+    const predictionsData = [['Date', 'Predicted Price', 'Daily Return (%)']];
     prediction.predictions.forEach(p => {
       predictionsData.push([p.date, p.predicted_price, p.predicted_return]);
     });
-
     const predictionsWS = XLSX.utils.aoa_to_sheet(predictionsData);
     XLSX.utils.book_append_sheet(wb, predictionsWS, 'Predictions');
-
     XLSX.writeFile(wb, `${selectedStock.value}_prediction_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   if (loadingStocks) {
     return (
       <div className="p-8">
-        <div className="w-full bg-dark-card/50 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-white/10">
+        <div className={`w-full ${
+          theme === 'light' ? 'bg-white/80 border-slate-200' : 'bg-dark-card/50 border-white/10'
+        } backdrop-blur-xl rounded-3xl p-10 shadow-2xl border`}>
           <LoadingSpinner size="large" />
-          <p className="text-center text-slate-400 mt-4">Loading stocks...</p>
+          <p className={`text-center ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'} mt-4`}>
+            Loading stocks...
+          </p>
         </div>
       </div>
     );
@@ -257,14 +257,22 @@ function Predictions() {
   return (
     <div className="p-8 animate-[fadeIn_0.5s_ease-in]">
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-slate-200 mb-2">Stock Price Predictions</h1>
-        <p className="text-slate-400">AI-powered predictions using Hybrid LSTM-GRU deep learning model</p>
+        <h1 className={`text-4xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'} mb-2`}>
+          Stock Price Predictions
+        </h1>
+        <p className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>
+          AI-powered predictions using Hybrid LSTM-GRU deep learning model
+        </p>
       </div>
 
-      <div className="w-full bg-dark-card/50 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-white/10">
+      <div className={`w-full ${
+        theme === 'light' ? 'bg-white/80 border-slate-200' : 'bg-dark-card/50 border-white/10'
+      } backdrop-blur-xl rounded-3xl p-10 shadow-2xl border`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 items-end">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <label className={`text-xs font-semibold ${
+              theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+            } uppercase tracking-wider flex items-center gap-2`}>
               <Search size={14} />
               Search Stock
             </label>
@@ -281,7 +289,9 @@ function Predictions() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            <label className={`text-xs font-semibold ${
+              theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+            } uppercase tracking-wider`}>
               Prediction Days
             </label>
             <input 
@@ -291,7 +301,11 @@ function Predictions() {
               value={daysAhead}
               onChange={(e) => setDaysAhead(parseInt(e.target.value))}
               disabled={loading}
-              className="w-full px-4 py-3.5 bg-dark-card border-2 border-dark-border rounded-xl text-slate-200 font-medium transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-[#0f172a] focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] hover:border-dark-hover disabled:opacity-50"
+              className={`w-full px-4 py-3.5 ${
+                theme === 'light' 
+                  ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:bg-white hover:border-slate-400' 
+                  : 'bg-dark-card border-dark-border text-slate-200 focus:border-blue-500 focus:bg-[#0f172a] hover:border-dark-hover'
+              } border-2 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] disabled:opacity-50`}
             />
           </div>
 
@@ -310,7 +324,7 @@ function Predictions() {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-5 py-4 rounded-xl mb-6 font-medium">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-4 rounded-xl mb-6 font-medium">
             {error}
           </div>
         )}
@@ -320,72 +334,73 @@ function Predictions() {
         {!loading && prediction && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-gradient-to-br from-blue-500/10 to-purple-600/10 border border-blue-500/20 p-7 rounded-2xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/40 backdrop-blur-sm">
-                <div className="w-16 h-16 flex items-center justify-center bg-blue-500/10 rounded-xl text-blue-500">
-                  <DollarSign size={32} />
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400 uppercase font-semibold tracking-wider mb-1">Current Price</div>
-                  <div className="text-3xl font-bold text-slate-200">₹{prediction.current_price.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-500/10 to-purple-600/10 border border-blue-500/20 p-7 rounded-2xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/40 backdrop-blur-sm">
-                <div className="w-16 h-16 flex items-center justify-center bg-blue-500/10 rounded-xl text-blue-500">
-                  <Calendar size={32} />
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400 uppercase font-semibold tracking-wider mb-1">
-                    Predicted Price ({daysAhead}d)
+              {[
+                { icon: DollarSign, label: 'Current Price', value: `₹${prediction.current_price.toFixed(2)}` },
+                { icon: Calendar, label: `Predicted Price (${daysAhead}d)`, value: `₹${lastPrediction?.predicted_price.toFixed(2)}` },
+                { icon: Activity, label: 'Expected Change', value: `${totalChange >= 0 ? '+' : ''}${totalChange}%`, isChange: true }
+              ].map((stat, idx) => (
+                <div key={idx} className={`${
+                  theme === 'light' 
+                    ? 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200' 
+                    : 'bg-gradient-to-br from-blue-500/10 to-purple-600/10 border-blue-500/20'
+                } border p-7 rounded-2xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)] ${
+                  theme === 'light' ? 'hover:border-blue-300' : 'hover:border-blue-500/40'
+                } backdrop-blur-sm`}>
+                  <div className={`w-16 h-16 flex items-center justify-center ${
+                    theme === 'light' ? 'bg-blue-100' : 'bg-blue-500/10'
+                  } rounded-xl text-blue-500`}>
+                    <stat.icon size={32} />
                   </div>
-                  <div className="text-3xl font-bold text-slate-200">₹{lastPrediction?.predicted_price.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-500/10 to-purple-600/10 border border-blue-500/20 p-7 rounded-2xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/40 backdrop-blur-sm">
-                <div className="w-16 h-16 flex items-center justify-center bg-blue-500/10 rounded-xl text-blue-500">
-                  <Activity size={32} />
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400 uppercase font-semibold tracking-wider mb-1">Expected Change</div>
-                  <div className={`text-3xl font-bold ${totalChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {totalChange >= 0 ? '+' : ''}{totalChange}%
+                  <div>
+                    <div className={`text-xs ${
+                      theme === 'light' ? 'text-slate-600' : 'text-slate-400'
+                    } uppercase font-semibold tracking-wider mb-1`}>
+                      {stat.label}
+                    </div>
+                    <div className={`text-3xl font-bold ${
+                      stat.isChange 
+                        ? (totalChange >= 0 ? 'text-green-500' : 'text-red-500')
+                        : (theme === 'light' ? 'text-slate-900' : 'text-slate-200')
+                    }`}>
+                      {stat.value}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
 
-            <div className="bg-[#0f172a]/50 rounded-2xl p-8 border border-white/5 mb-10">
+            <div className={`${
+              theme === 'light' ? 'bg-slate-50/50 border-slate-200' : 'bg-[#0f172a]/50 border-white/5'
+            } rounded-2xl p-8 border mb-10`}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-200">Price Prediction Chart</h2>
+                <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'}`}>
+                  Price Prediction Chart
+                </h2>
                 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setChartType('line')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                      chartType === 'line'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-                    }`}
-                  >
-                    Line
-                  </button>
-                  <button
-                    onClick={() => setChartType('area')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                      chartType === 'area'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-                    }`}
-                  >
-                    Area
-                  </button>
+                  {['line', 'area'].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setChartType(type)}
+                      className={`px-4 py-2 rounded-lg font-semibold transition-all capitalize ${
+                        chartType === type
+                          ? 'bg-blue-500 text-white'
+                          : theme === 'light'
+                            ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                            : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                   <button
                     onClick={() => setShowBrush(!showBrush)}
                     className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${
                       showBrush
                         ? 'bg-purple-500 text-white'
-                        : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
+                        : theme === 'light'
+                          ? 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                          : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
                     }`}
                     title="Toggle zoom slider"
                   >
@@ -393,11 +408,15 @@ function Predictions() {
                     Zoom
                   </button>
 
-                  <div className="w-px bg-slate-600 mx-2"></div>
+                  <div className={`w-px ${theme === 'light' ? 'bg-slate-300' : 'bg-slate-600'} mx-2`}></div>
 
                   <button
                     onClick={exportToCSV}
-                    className="px-4 py-2 rounded-lg font-semibold transition-all bg-green-500/10 text-green-400 hover:bg-green-500/20 flex items-center gap-2"
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+                      theme === 'light'
+                        ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                        : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                    }`}
                     title="Export to CSV"
                   >
                     <Download size={16} />
@@ -405,7 +424,11 @@ function Predictions() {
                   </button>
                   <button
                     onClick={exportToExcel}
-                    className="px-4 py-2 rounded-lg font-semibold transition-all bg-green-500/10 text-green-400 hover:bg-green-500/20 flex items-center gap-2"
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+                      theme === 'light'
+                        ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                        : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                    }`}
                     title="Export to Excel"
                   >
                     <FileSpreadsheet size={16} />
@@ -417,21 +440,15 @@ function Predictions() {
               <ResponsiveContainer width="100%" height={500}>
                 {chartType === 'line' ? (
                   <LineChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : '#334155'} />
                     <XAxis 
                       dataKey="date" 
-                      stroke="#94a3b8"
+                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis 
                       domain={['auto', 'auto']} 
-                      stroke="#94a3b8"
+                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
                       style={{ fontSize: '12px' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -461,7 +478,7 @@ function Predictions() {
                         dataKey="date" 
                         height={30} 
                         stroke="#3b82f6"
-                        fill="#1e293b"
+                        fill={theme === 'light' ? '#f8fafc' : '#1e293b'}
                       />
                     )}
                   </LineChart>
@@ -473,15 +490,15 @@ function Predictions() {
                         <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : '#334155'} />
                     <XAxis 
                       dataKey="date" 
-                      stroke="#94a3b8"
+                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis 
                       domain={['auto', 'auto']} 
-                      stroke="#94a3b8"
+                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
                       style={{ fontSize: '12px' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -499,7 +516,7 @@ function Predictions() {
                         dataKey="date" 
                         height={30} 
                         stroke="#3b82f6"
-                        fill="#1e293b"
+                        fill={theme === 'light' ? '#f8fafc' : '#1e293b'}
                       />
                     )}
                   </AreaChart>
@@ -507,23 +524,43 @@ function Predictions() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-[#0f172a]/50 rounded-2xl p-8 border border-white/5">
-              <h3 className="text-xl font-bold text-slate-200 mb-6">Detailed Predictions</h3>
+            <div className={`${
+              theme === 'light' ? 'bg-slate-50/50 border-slate-200' : 'bg-[#0f172a]/50 border-white/5'
+            } rounded-2xl p-8 border`}>
+              <h3 className={`text-xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'} mb-6`}>
+                Detailed Predictions
+              </h3>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-blue-500/5">
-                      <th className="text-left px-5 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Date</th>
-                      <th className="text-left px-5 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Predicted Price</th>
-                      <th className="text-left px-5 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Daily Return</th>
+                    <tr className={theme === 'light' ? 'bg-blue-50' : 'bg-blue-500/5'}>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
+                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+                      } uppercase tracking-wider`}>Date</th>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
+                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+                      } uppercase tracking-wider`}>Predicted Price</th>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
+                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+                      } uppercase tracking-wider`}>Daily Return</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prediction.predictions.map((p, idx) => (
-                      <tr key={idx} className="border-b border-white/5 transition-colors hover:bg-blue-500/5">
-                        <td className="px-5 py-4 text-slate-200 font-medium">{p.date}</td>
-                        <td className="px-5 py-4 text-slate-200 font-medium">₹{p.predicted_price.toFixed(2)}</td>
-                        <td className={`px-5 py-4 font-bold ${p.predicted_return >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <tr key={idx} className={`${
+                        theme === 'light' 
+                          ? 'border-slate-200 hover:bg-blue-50' 
+                          : 'border-white/5 hover:bg-blue-500/5'
+                      } border-b transition-colors`}>
+                        <td className={`px-5 py-4 ${
+                          theme === 'light' ? 'text-slate-900' : 'text-slate-200'
+                        } font-medium`}>{p.date}</td>
+                        <td className={`px-5 py-4 ${
+                          theme === 'light' ? 'text-slate-900' : 'text-slate-200'
+                        } font-medium`}>₹{p.predicted_price.toFixed(2)}</td>
+                        <td className={`px-5 py-4 font-bold ${
+                          p.predicted_return >= 0 ? 'text-green-500' : 'text-red-500'
+                        }`}>
                           {p.predicted_return >= 0 ? '+' : ''}{p.predicted_return.toFixed(2)}%
                         </td>
                       </tr>

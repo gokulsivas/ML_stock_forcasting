@@ -4,25 +4,23 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
-          border: '#334155',
-          hover: '#475569',
-        }
+        'dark-bg': '#0f172a',
+        'dark-card': '#1e293b',
+        'dark-border': '#334155',
+        'dark-hover': '#475569',
+        'light-bg': '#f8fafc',
+        'light-card': '#ffffff',
+        'light-border': '#e2e8f0',
+        'light-hover': '#cbd5e1',
       },
       animation: {
-        'shimmer': 'shimmer 1.5s infinite',
+        'fadeIn': 'fadeIn 0.5s ease-in',
+        'shimmer': 'shimmer 2s infinite linear',
       },
-      keyframes: {
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        }
-      }
     },
   },
   plugins: [],
