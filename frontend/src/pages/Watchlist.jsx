@@ -259,7 +259,7 @@ function Watchlist() {
               <button
                 onClick={fetchAllPredictions}
                 disabled={loadingPredictions}
-                className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold transition-all duration-300 hover:shadow-[0_10px_25px_-5px_rgba(59,130,246,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-indigo-600 text-white rounded-lg font-semibold transition-all duration-300 hover:shadow-[0_10px_25px_-5px_rgba(59,130,246,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingPredictions ? (
                   <>

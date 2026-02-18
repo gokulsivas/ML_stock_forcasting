@@ -11,7 +11,7 @@ function Navbar() {
   const linkClass = (path) => `
     flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300
     ${isActive(path) 
-      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-[0_8px_30px_-5px_rgba(59,130,246,0.5)]' 
+      ? 'bg-gradient-to-r from-indigo-700 to-indigo-600 text-white shadow-[0_8px_30px_-5px_rgba(59,130,246,0.5)]' 
       : theme === 'light'
         ? 'text-slate-700 hover:bg-slate-100'
         : 'text-slate-300 hover:bg-slate-800'
@@ -30,13 +30,13 @@ function Navbar() {
           <Link to="/" className="flex items-center gap-3 group">
             <div className={`w-12 h-12 rounded-xl ${
               theme === 'light' 
-                ? 'bg-gradient-to-br from-blue-500 to-purple-600' 
-                : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                ? 'bg-gradient-to-br from-indigo-600 to-indigo-600' 
+                : 'bg-gradient-to-br from-indigo-700 to-indigo-600'
             } flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg`}>
               <TrendingUp className="text-white" size={24} />
             </div>
             <span className={`text-2xl font-bold ${
-              theme === 'light' ? 'text-slate-900' : 'text-slate-100'
+              theme === 'light' ? 'text-zinc-800' : 'text-zinc-200'
             } tracking-tight`}>
               StockPredict
             </span>

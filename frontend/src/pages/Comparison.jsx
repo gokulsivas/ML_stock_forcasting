@@ -348,7 +348,7 @@ function Comparison() {
             <button 
               onClick={compareStocks} 
               disabled={loading || selectedStocks.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold uppercase tracking-wide transition-all duration-300 hover:shadow-[0_15px_35px_-5px_rgba(59,130,246,0.5)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-600 text-white rounded-xl font-semibold uppercase tracking-wide transition-all duration-300 hover:shadow-[0_15px_35px_-5px_rgba(59,130,246,0.5)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {loading ? (
                 <>
