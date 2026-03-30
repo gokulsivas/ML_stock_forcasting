@@ -5,7 +5,9 @@ import { Plus, Trash2, TrendingUp, TrendingDown, AlertCircle } from 'lucide-reac
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTheme } from '../context/ThemeContext';
 
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+
 
 function Watchlist() {
   const { theme } = useTheme();
@@ -16,6 +18,7 @@ function Watchlist() {
   const [loadingPredictions, setLoadingPredictions] = useState(false);
   const [predictions, setPredictions] = useState({});
   const [error, setError] = useState(null);
+
 
   useEffect(() => {
     const savedWatchlist = localStorage.getItem('stockWatchlist');
@@ -28,6 +31,7 @@ function Watchlist() {
     }
   }, []);
 
+
   useEffect(() => {
     if (watchlist.length > 0) {
       localStorage.setItem('stockWatchlist', JSON.stringify(watchlist));
@@ -36,25 +40,32 @@ function Watchlist() {
     }
   }, [watchlist]);
 
+
   useEffect(() => {
     fetchStocks();
   }, []);
 
+
   const fetchStocks = async () => {
-    setLoadingStocks(true);
-    try {
-      const response = await axios.get(`${API_URL}/api/stocks/`);
-      const stockOptions = response.data.map(stock => ({
-        value: stock.symbol,
-        label: stock.symbol
-      }));
-      setStocks(stockOptions);
-    } catch (err) {
-      setError('Failed to fetch stocks');
-    } finally {
-      setLoadingStocks(false);
+  setLoadingStocks(true);
+  try {
+    const response = await axios.get(`${API_URL}/api/stocks/`);
+    // ✅ CORRECT: backend returns objects with {symbol, ysymbol}
+    const stockOptions = response.data.map(stock => ({
+      value: stock.symbol,
+      label: stock.symbol
+    }));
+    setStocks(stockOptions);
+    // only for Predictions.jsx — keep this line:
+    if (stockOptions.length > 0) {
+      setSelectedStock(stockOptions[0]);
     }
-  };
+  } catch (err) {
+    setError('Failed to fetch stocks');
+  } finally {
+    setLoadingStocks(false);
+  }
+};
 
   const addToWatchlist = () => {
     if (selectedStock && !watchlist.find(s => s.value === selectedStock.value)) {
@@ -63,6 +74,7 @@ function Watchlist() {
     }
   };
 
+
   const removeFromWatchlist = (symbol) => {
     setWatchlist(watchlist.filter(s => s.value !== symbol));
     const newPredictions = { ...predictions };
@@ -70,16 +82,20 @@ function Watchlist() {
     setPredictions(newPredictions);
   };
 
+
   const clearWatchlist = () => {
     setWatchlist([]);
     setPredictions({});
   };
 
+
   const fetchAllPredictions = async () => {
     if (watchlist.length === 0) return;
 
+
     setLoadingPredictions(true);
     setError(null);
+
 
     try {
       const predictionPromises = watchlist.map(stock =>
@@ -88,6 +104,7 @@ function Watchlist() {
           days_ahead: 7
         }).then(res => ({ symbol: stock.value, data: res.data }))
       );
+
 
       const results = await Promise.all(predictionPromises);
       
@@ -103,6 +120,7 @@ function Watchlist() {
       setLoadingPredictions(false);
     }
   };
+
 
   const selectStyles = {
     control: (base, state) => ({
@@ -172,6 +190,7 @@ function Watchlist() {
     indicatorSeparator: () => ({ display: 'none' })
   };
 
+
   if (loadingStocks) {
     return (
       <div className="p-8">
@@ -187,6 +206,7 @@ function Watchlist() {
     );
   }
 
+
   return (
     <div className="p-8 animate-[fadeIn_0.5s_ease-in]">
       <div className="text-center mb-10">
@@ -197,6 +217,7 @@ function Watchlist() {
           Track your favorite stocks and get quick predictions
         </p>
       </div>
+
 
       <div className={`w-full ${
         theme === 'light' ? 'bg-white/80 border-slate-200' : 'bg-dark-card/50 border-white/10'
@@ -234,6 +255,7 @@ function Watchlist() {
             </button>
           </div>
         </div>
+
 
         {watchlist.length > 0 && (
           <div className={`flex items-center justify-between mb-6 pb-6 border-b ${
@@ -277,12 +299,14 @@ function Watchlist() {
           </div>
         )}
 
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-4 rounded-xl mb-6 font-medium flex items-center gap-3">
             <AlertCircle size={20} />
             {error}
           </div>
         )}
+
 
         {watchlist.length === 0 && (
           <div className="text-center py-16">
@@ -296,6 +320,7 @@ function Watchlist() {
             </p>
           </div>
         )}
+
 
         {watchlist.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -311,6 +336,7 @@ function Watchlist() {
                 predictedPrice = lastPred.predicted_price;
                 change = ((predictedPrice - prediction.current_price) / prediction.current_price * 100);
               }
+
 
               return (
                 <div
@@ -342,6 +368,7 @@ function Watchlist() {
                     </button>
                   </div>
 
+
                   {loadingPredictions && !hasPrediction ? (
                     <div className="py-8">
                       <LoadingSpinner size="small" />
@@ -370,6 +397,7 @@ function Watchlist() {
                         </span>
                       </div>
 
+
                       <div className={`pt-3 border-t ${
                         theme === 'light' ? 'border-slate-200' : 'border-white/10'
                       }`}>
@@ -391,6 +419,7 @@ function Watchlist() {
                           </div>
                         </div>
                       </div>
+
 
                       <div className="pt-3">
                         <div className={`px-4 py-2 rounded-lg text-center font-semibold border ${
@@ -424,5 +453,6 @@ function Watchlist() {
     </div>
   );
 }
+
 
 export default Watchlist;

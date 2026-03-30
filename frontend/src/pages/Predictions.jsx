@@ -8,7 +8,9 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { useTheme } from '../context/ThemeContext';
 import * as XLSX from 'xlsx';
 
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+
 
 function Predictions() {
   const { theme } = useTheme();
@@ -22,28 +24,32 @@ function Predictions() {
   const [chartType, setChartType] = useState('line');
   const [showBrush, setShowBrush] = useState(false);
 
+
   useEffect(() => {
     fetchStocks();
   }, []);
 
+
   const fetchStocks = async () => {
-    setLoadingStocks(true);
-    try {
-      const response = await axios.get(`${API_URL}/api/stocks/`);
-      const stockOptions = response.data.map(stock => ({
-        value: stock.symbol,
-        label: stock.symbol
-      }));
-      setStocks(stockOptions);
-      if (stockOptions.length > 0) {
-        setSelectedStock(stockOptions[0]);
-      }
-    } catch (err) {
-      setError('Failed to fetch stocks');
-    } finally {
-      setLoadingStocks(false);
+  setLoadingStocks(true);
+  try {
+    const response = await axios.get(`${API_URL}/api/stocks/`);
+    // ✅ CORRECT: backend returns objects with {symbol, ysymbol}
+    const stockOptions = response.data.map(stock => ({
+      value: stock.symbol,
+      label: stock.symbol
+    }));
+    setStocks(stockOptions);
+    // only for Predictions.jsx — keep this line:
+    if (stockOptions.length > 0) {
+      setSelectedStock(stockOptions[0]);
     }
-  };
+  } catch (err) {
+    setError('Failed to fetch stocks');
+  } finally {
+    setLoadingStocks(false);
+  }
+};
 
   const fetchPrediction = async () => {
     if (!selectedStock) return;
@@ -66,6 +72,7 @@ function Predictions() {
     }
   };
 
+
   const chartData = prediction ? [
     {
       date: prediction.current_date,
@@ -82,10 +89,12 @@ function Predictions() {
     }))
   ] : [];
 
+
   const lastPrediction = prediction?.predictions[prediction.predictions.length - 1];
   const totalChange = lastPrediction 
     ? ((lastPrediction.predicted_price - prediction.current_price) / prediction.current_price * 100).toFixed(2)
     : 0;
+
 
   const selectStyles = {
     control: (base, state) => ({
@@ -166,6 +175,7 @@ function Predictions() {
     })
   };
 
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -195,6 +205,7 @@ function Predictions() {
     return null;
   };
 
+
   const exportToCSV = () => {
     if (!prediction) return;
     const csvData = [
@@ -215,6 +226,7 @@ function Predictions() {
     link.download = `${selectedStock.value}_prediction_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
+
 
   const exportToExcel = () => {
     if (!prediction) return;
@@ -239,6 +251,7 @@ function Predictions() {
     XLSX.writeFile(wb, `${selectedStock.value}_prediction_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+
   if (loadingStocks) {
     return (
       <div className="p-8">
@@ -254,6 +267,7 @@ function Predictions() {
     );
   }
 
+
   return (
     <div className="p-8 animate-[fadeIn_0.5s_ease-in]">
       <div className="text-center mb-10">
@@ -264,6 +278,7 @@ function Predictions() {
           AI-powered predictions using Hybrid LSTM-GRU deep learning model
         </p>
       </div>
+
 
       <div className={`w-full ${
         theme === 'light' ? 'bg-white/80 border-slate-200' : 'bg-dark-card/50 border-white/10'
@@ -288,6 +303,7 @@ function Predictions() {
             />
           </div>
 
+
           <div className="flex flex-col gap-2">
             <label className={`text-xs font-semibold ${
               theme === 'light' ? 'text-slate-700' : 'text-slate-300'
@@ -309,6 +325,7 @@ function Predictions() {
             />
           </div>
 
+
           <button 
             onClick={fetchPrediction} 
             disabled={loading || !selectedStock}
@@ -323,13 +340,16 @@ function Predictions() {
           </button>
         </div>
 
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-4 rounded-xl mb-6 font-medium">
             {error}
           </div>
         )}
 
+
         {loading && <SkeletonLoader />}
+
 
         {!loading && prediction && (
           <>
@@ -368,6 +388,7 @@ function Predictions() {
                 </div>
               ))}
             </div>
+
 
             <div className={`${
               theme === 'light' ? 'bg-slate-50/50 border-slate-200' : 'bg-[#0f172a]/50 border-white/5'
@@ -408,7 +429,9 @@ function Predictions() {
                     Zoom
                   </button>
 
+
                   <div className={`w-px ${theme === 'light' ? 'bg-slate-300' : 'bg-slate-600'} mx-2`}></div>
+
 
                   <button
                     onClick={exportToCSV}
@@ -436,6 +459,7 @@ function Predictions() {
                   </button>
                 </div>
               </div>
+
 
               <ResponsiveContainer width="100%" height={500}>
                 {chartType === 'line' ? (
@@ -524,6 +548,7 @@ function Predictions() {
               </ResponsiveContainer>
             </div>
 
+
             <div className={`${
               theme === 'light' ? 'bg-slate-50/50 border-slate-200' : 'bg-[#0f172a]/50 border-white/5'
             } rounded-2xl p-8 border`}>
@@ -575,5 +600,6 @@ function Predictions() {
     </div>
   );
 }
+
 
 export default Predictions;

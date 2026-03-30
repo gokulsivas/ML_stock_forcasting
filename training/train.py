@@ -16,18 +16,20 @@ from models.hybrid_lstm_gru import HybridLSTMGRU, count_parameters
 from training.dataset import StockSequenceDataset
 
 
+# ✅ CHANGED: uses alpha instead of mse_weight/dir_weight
 class DirectionalLoss(nn.Module):
-    def __init__(self, mse_weight=0.6, dir_weight=0.4):
+    def __init__(self, alpha=0.7):
         super().__init__()
-        self.mse_weight = mse_weight
-        self.dir_weight = dir_weight
+        self.alpha = alpha
 
     def forward(self, predictions, targets):
         mse_loss = F.mse_loss(predictions, targets)
+
         pred_dir = torch.sign(predictions)
         true_dir = torch.sign(targets)
-        dir_loss = torch.mean((pred_dir != true_dir).float())
-        return self.mse_weight * mse_loss + self.dir_weight * dir_loss
+        direction_penalty = torch.mean((pred_dir != true_dir).float())
+
+        return self.alpha * mse_loss + (1 - self.alpha) * direction_penalty
 
 
 class StockTrainer:
@@ -39,7 +41,7 @@ class StockTrainer:
         self.config = config
 
         self.scaler = GradScaler('cuda')
-        self.criterion = DirectionalLoss(mse_weight=0.6, dir_weight=0.4)
+        self.criterion = DirectionalLoss(alpha=0.7)  # ✅ CHANGED
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=config['learning_rate']
@@ -176,7 +178,6 @@ class StockTrainer:
             if torch.cuda.is_available():
                 print(f"GPU Memory: {torch.cuda.memory_allocated()/1e9:.2f}GB")
 
-            # Always save latest so we can resume from here
             self.save_latest_checkpoint(epoch, latest_save_path)
 
             if val_loss < self.best_val_loss:

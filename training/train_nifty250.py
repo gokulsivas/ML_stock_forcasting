@@ -194,7 +194,8 @@ def train_large_model():
 
     trainer = StockTrainer(model, device, config)
     trainer.train(train_loader, val_loader, config['epochs'],
-                  save_path='saved_models/returns_model.pth')
+              best_save_path='saved_models/best_model.pth',
+              latest_save_path='saved_models/latest_checkpoint.pth')
 
     print("=" * 60)
     print(f"DONE! Model saved: saved_models/returns_model.pth")

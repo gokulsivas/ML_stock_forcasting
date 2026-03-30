@@ -9,7 +9,6 @@ class DataService:
     
     @staticmethod
     def get_all_stocks():
-        """Get all available stocks"""
         with engine.connect() as conn:
             query = text("""
                 SELECT DISTINCT symbol, ysymbol
@@ -18,11 +17,10 @@ class DataService:
                     SELECT DISTINCT symbol FROM stock_prices
                 )
                 ORDER BY symbol
-                LIMIT 100
             """)
             result = conn.execute(query)
             return [{'symbol': row.symbol, 'ysymbol': row.ysymbol} for row in result]
-    
+        
     @staticmethod
     def get_historical_prices(symbol, limit=365):
         """Get recent historical data"""
