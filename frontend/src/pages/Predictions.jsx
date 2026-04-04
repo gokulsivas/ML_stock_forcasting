@@ -21,6 +21,7 @@ function Predictions() {
   const [loading, setLoading] = useState(false);
   const [loadingStocks, setLoadingStocks] = useState(true);
   const [error, setError] = useState(null);
+  const [daysError, setDaysError] = useState(null);   // ← NEW: separate error for days input
   const [chartType, setChartType] = useState('line');
   const [showBrush, setShowBrush] = useState(false);
 
@@ -31,29 +32,48 @@ function Predictions() {
 
 
   const fetchStocks = async () => {
-  setLoadingStocks(true);
-  try {
-    const response = await axios.get(`${API_URL}/api/stocks/`);
-    // ✅ CORRECT: backend returns objects with {symbol, ysymbol}
-    const stockOptions = response.data.map(stock => ({
-      value: stock.symbol,
-      label: stock.symbol
-    }));
-    setStocks(stockOptions);
-    // only for Predictions.jsx — keep this line:
-    if (stockOptions.length > 0) {
-      setSelectedStock(stockOptions[0]);
+    setLoadingStocks(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/stocks/`);
+      const stockOptions = response.data.map(stock => ({
+        value: stock.symbol,
+        label: stock.symbol
+      }));
+      setStocks(stockOptions);
+      if (stockOptions.length > 0) {
+        setSelectedStock(stockOptions[0]);
+      }
+    } catch (err) {
+      setError('Failed to fetch stocks');
+    } finally {
+      setLoadingStocks(false);
     }
-  } catch (err) {
-    setError('Failed to fetch stocks');
-  } finally {
-    setLoadingStocks(false);
-  }
-};
+  };
+
+
+  // ── NEW: validate days input on every keystroke ──────────────────────────────
+  const handleDaysChange = (e) => {
+    const value = parseInt(e.target.value);
+    setDaysAhead(value);
+    if (isNaN(value) || value < 1) {
+      setDaysError('Please enter a value between 1 and 365.');
+    } else if (value > 365) {
+      setDaysError('Maximum allowed is 365 days. Please enter a value between 1 and 365.');
+    } else {
+      setDaysError(null);
+    }
+  };
+
 
   const fetchPrediction = async () => {
     if (!selectedStock) return;
-    
+
+    // ── NEW: guard before API call ───────────────────────────────────────────
+    if (isNaN(daysAhead) || daysAhead < 1 || daysAhead > 365) {
+      setDaysError('Maximum allowed is 365 days. Please enter a value between 1 and 365.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -123,9 +143,7 @@ function Predictions() {
       ...base,
       padding: '8px',
       maxHeight: '300px',
-      '::-webkit-scrollbar': {
-        width: '8px'
-      },
+      '::-webkit-scrollbar': { width: '8px' },
       '::-webkit-scrollbar-track': {
         background: theme === 'light' ? '#f1f5f9' : '#0f172a',
         borderRadius: '4px'
@@ -146,9 +164,7 @@ function Predictions() {
       borderRadius: '8px',
       cursor: 'pointer',
       fontWeight: state.isSelected ? '600' : '500',
-      '&:active': {
-        background: '#2563eb'
-      }
+      '&:active': { background: '#2563eb' }
     }),
     singleValue: (base) => ({
       ...base,
@@ -166,13 +182,9 @@ function Predictions() {
     dropdownIndicator: (base) => ({
       ...base,
       color: '#64748b',
-      '&:hover': {
-        color: '#94a3b8'
-      }
+      '&:hover': { color: '#94a3b8' }
     }),
-    indicatorSeparator: () => ({
-      display: 'none'
-    })
+    indicatorSeparator: () => ({ display: 'none' })
   };
 
 
@@ -275,7 +287,7 @@ function Predictions() {
           Stock Price Predictions
         </h1>
         <p className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>
-          AI-powered predictions using Hybrid LSTM-GRU deep learning model
+          AI-powered predictions using an ensemble of LSTM, XGBoost & CNN models
         </p>
       </div>
 
@@ -304,31 +316,44 @@ function Predictions() {
           </div>
 
 
+          {/* ── Days input with inline validation ─────────────────────────── */}
           <div className="flex flex-col gap-2">
             <label className={`text-xs font-semibold ${
               theme === 'light' ? 'text-slate-700' : 'text-slate-300'
             } uppercase tracking-wider`}>
               Prediction Days
             </label>
-            <input 
-              type="number" 
-              min="1" 
-              max="365" 
+            <input
+              type="number"
+              min="1"
+              max="365"
               value={daysAhead}
-              onChange={(e) => setDaysAhead(parseInt(e.target.value))}
+              onChange={handleDaysChange}
               disabled={loading}
               className={`w-full px-4 py-3.5 ${
-                theme === 'light' 
-                  ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:bg-white hover:border-slate-400' 
-                  : 'bg-dark-card border-dark-border text-slate-200 focus:border-blue-500 focus:bg-[#0f172a] hover:border-dark-hover'
-              } border-2 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] disabled:opacity-50`}
+                daysError
+                  ? 'border-red-500 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                  : theme === 'light'
+                    ? 'border-slate-300 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] hover:border-slate-400'
+                    : 'border-dark-border focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] hover:border-dark-hover'
+              } ${
+                theme === 'light'
+                  ? 'bg-white text-slate-900 focus:bg-white'
+                  : 'bg-dark-card text-slate-200 focus:bg-[#0f172a]'
+              } border-2 rounded-xl font-medium transition-all duration-300 focus:outline-none disabled:opacity-50`}
             />
+            {/* ── Inline error message ── */}
+            {daysError && (
+              <p className="text-red-500 text-xs font-medium flex items-center gap-1 mt-1">
+                ⚠ {daysError}
+              </p>
+            )}
           </div>
 
 
-          <button 
-            onClick={fetchPrediction} 
-            disabled={loading || !selectedStock}
+          <button
+            onClick={fetchPrediction}
+            disabled={loading || !selectedStock || !!daysError}
             className="flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-600 text-white rounded-xl font-semibold uppercase tracking-wide transition-all duration-300 hover:shadow-[0_15px_35px_-5px_rgba(59,130,246,0.5)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {loading ? (
@@ -397,7 +422,7 @@ function Predictions() {
                 <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'}`}>
                   Price Prediction Chart
                 </h2>
-                
+
                 <div className="flex gap-2">
                   {['line', 'area'].map((type) => (
                     <button
@@ -429,9 +454,7 @@ function Predictions() {
                     Zoom
                   </button>
 
-
                   <div className={`w-px ${theme === 'light' ? 'bg-slate-300' : 'bg-slate-600'} mx-2`}></div>
-
 
                   <button
                     onClick={exportToCSV}
@@ -465,29 +488,20 @@ function Predictions() {
                 {chartType === 'line' ? (
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : '#334155'} />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
-                      style={{ fontSize: '12px' }}
-                    />
-                    <YAxis 
-                      domain={['auto', 'auto']} 
-                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
-                      style={{ fontSize: '12px' }}
-                    />
+                    <XAxis dataKey="date" stroke={theme === 'light' ? '#64748b' : '#94a3b8'} style={{ fontSize: '12px' }} />
+                    <YAxis domain={['auto', 'auto']} stroke={theme === 'light' ? '#64748b' : '#94a3b8'} style={{ fontSize: '12px' }} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="#3b82f6" 
+                    <Line
+                      type="monotone"
+                      dataKey="price"
+                      stroke="#3b82f6"
                       strokeWidth={3}
                       dot={(props) => {
                         const { cx, cy, payload } = props;
                         return (
                           <circle
-                            cx={cx}
-                            cy={cy}
+                            cx={cx} cy={cy}
                             r={payload.isActual ? 8 : 5}
                             fill={payload.isActual ? '#10b981' : '#3b82f6'}
                             stroke="#fff"
@@ -498,33 +512,20 @@ function Predictions() {
                       activeDot={{ r: 8 }}
                     />
                     {showBrush && (
-                      <Brush 
-                        dataKey="date" 
-                        height={30} 
-                        stroke="#3b82f6"
-                        fill={theme === 'light' ? '#f8fafc' : '#1e293b'}
-                      />
+                      <Brush dataKey="date" height={30} stroke="#3b82f6" fill={theme === 'light' ? '#f8fafc' : '#1e293b'} />
                     )}
                   </LineChart>
                 ) : (
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorPriceArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : '#334155'} />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
-                      style={{ fontSize: '12px' }}
-                    />
-                    <YAxis 
-                      domain={['auto', 'auto']} 
-                      stroke={theme === 'light' ? '#64748b' : '#94a3b8'}
-                      style={{ fontSize: '12px' }}
-                    />
+                    <XAxis dataKey="date" stroke={theme === 'light' ? '#64748b' : '#94a3b8'} style={{ fontSize: '12px' }} />
+                    <YAxis domain={['auto', 'auto']} stroke={theme === 'light' ? '#64748b' : '#94a3b8'} style={{ fontSize: '12px' }} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Area
@@ -536,12 +537,7 @@ function Predictions() {
                       fill="url(#colorPriceArea)"
                     />
                     {showBrush && (
-                      <Brush 
-                        dataKey="date" 
-                        height={30} 
-                        stroke="#3b82f6"
-                        fill={theme === 'light' ? '#f8fafc' : '#1e293b'}
-                      />
+                      <Brush dataKey="date" height={30} stroke="#3b82f6" fill={theme === 'light' ? '#f8fafc' : '#1e293b'} />
                     )}
                   </AreaChart>
                 )}
@@ -559,33 +555,21 @@ function Predictions() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className={theme === 'light' ? 'bg-blue-50' : 'bg-blue-500/5'}>
-                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
-                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
-                      } uppercase tracking-wider`}>Date</th>
-                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
-                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
-                      } uppercase tracking-wider`}>Predicted Price</th>
-                      <th className={`text-left px-5 py-4 text-xs font-semibold ${
-                        theme === 'light' ? 'text-slate-700' : 'text-slate-300'
-                      } uppercase tracking-wider`}>Daily Return</th>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${theme === 'light' ? 'text-slate-700' : 'text-slate-300'} uppercase tracking-wider`}>Date</th>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${theme === 'light' ? 'text-slate-700' : 'text-slate-300'} uppercase tracking-wider`}>Predicted Price</th>
+                      <th className={`text-left px-5 py-4 text-xs font-semibold ${theme === 'light' ? 'text-slate-700' : 'text-slate-300'} uppercase tracking-wider`}>Daily Return</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prediction.predictions.map((p, idx) => (
                       <tr key={idx} className={`${
-                        theme === 'light' 
-                          ? 'border-slate-200 hover:bg-blue-50' 
+                        theme === 'light'
+                          ? 'border-slate-200 hover:bg-blue-50'
                           : 'border-white/5 hover:bg-blue-500/5'
                       } border-b transition-colors`}>
-                        <td className={`px-5 py-4 ${
-                          theme === 'light' ? 'text-slate-900' : 'text-slate-200'
-                        } font-medium`}>{p.date}</td>
-                        <td className={`px-5 py-4 ${
-                          theme === 'light' ? 'text-slate-900' : 'text-slate-200'
-                        } font-medium`}>₹{p.predicted_price.toFixed(2)}</td>
-                        <td className={`px-5 py-4 font-bold ${
-                          p.predicted_return >= 0 ? 'text-green-500' : 'text-red-500'
-                        }`}>
+                        <td className={`px-5 py-4 ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'} font-medium`}>{p.date}</td>
+                        <td className={`px-5 py-4 ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'} font-medium`}>₹{p.predicted_price.toFixed(2)}</td>
+                        <td className={`px-5 py-4 font-bold ${p.predicted_return >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {p.predicted_return >= 0 ? '+' : ''}{p.predicted_return.toFixed(2)}%
                         </td>
                       </tr>

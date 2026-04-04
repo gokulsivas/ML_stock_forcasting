@@ -1,158 +1,206 @@
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from sqlalchemy import create_engine, text
-import logging
-from datetime import datetime, timedelta
 import time
+import random
+import logging
+import os
+from datetime import date, timedelta, datetime
 
-engine = create_engine("postgresql+psycopg2://postgres:admin@localhost:5432/market_data", pool_pre_ping=True)
+import pandas as pd
+import yfinance as yf
+from sqlalchemy import create_engine, text
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+# =====================================================
+# CONFIGURATION
+# =====================================================
+
+DB_URL = "postgresql+psycopg2://postgres:admin@localhost:5432/market_data"
+
+START_DATE = "2015-04-01"
+SLEEP_MIN = 3
+SLEEP_MAX = 6
+
+LOG_DIR = "logs"
+
+# =====================================================
+# LOGGING SETUP
+# =====================================================
+
+os.makedirs(LOG_DIR, exist_ok=True)
+
+log_file = os.path.join(
+    LOG_DIR,
+    f"stock_ingestion_{datetime.now().date()}.log"
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.FileHandler(log_file, mode="a", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
+# =====================================================
+# DATABASE ENGINE
+# =====================================================
 
-def get_symbols():
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT DISTINCT symbol FROM stock_prices ORDER BY symbol"))
-        return [row[0] for row in result]
+engine = create_engine(DB_URL, pool_pre_ping=True)
+
+# =====================================================
+# HELPER FUNCTIONS
+# =====================================================
+
+def get_symbols(conn):
+    query = text("SELECT ysymbol FROM stock_master ORDER BY ysymbol")
+    return [row[0] for row in conn.execute(query)]
+
+def normalize_symbol(yf_symbol):
+    """
+    Convert yfinance symbol (e.g., 20MICRONS.NS) to DB symbol (20MICRONS)
+    """
+    return yf_symbol.replace(".NS", "")
+
+def get_last_trade_date(conn, symbol):
+    query = text("""
+        SELECT MAX(trade_date)
+        FROM stock_prices
+        WHERE symbol = :symbol
+    """)
+    return conn.execute(query, {"symbol": symbol}).scalar()
 
 
-def get_last_date(symbol):
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT MAX(trade_date) FROM stock_prices WHERE symbol = :sym"),
-            {"sym": symbol}
-        )
-        row = result.fetchone()
-        return pd.to_datetime(row[0]).date() if row[0] else None
+def preprocess_yf_data(df, yf_symbol):
+    """
+    Normalize yfinance dataframe into DB-ready format
+    """
 
+    if df.empty:
+        return df
 
-def compute_features(df):
-    df = df.copy()
-    df['sma5']        = df['close_price'].rolling(5).mean()
-    df['sma10']       = df['close_price'].rolling(10).mean()
-    df['sma20']       = df['close_price'].rolling(20).mean()
-    df['sma50']       = df['close_price'].rolling(50).mean()
-    df['ema12']       = df['close_price'].ewm(span=12).mean()
-    df['ema26']       = df['close_price'].ewm(span=26).mean()
-    df['macd']        = df['ema12'] - df['ema26']
-    df['macd_signal'] = df['macd'].ewm(span=9).mean()
-    delta = df['close_price'].diff()
-    gain  = delta.clip(lower=0).rolling(14).mean()
-    loss  = (-delta.clip(upper=0)).rolling(14).mean()
-    df['rsi'] = 100 - (100 / (1 + gain / (loss + 1e-10)))
-    df['bb_middle'] = df['close_price'].rolling(20).mean()
-    bb_std = df['close_price'].rolling(20).std()
-    df['bb_upper'] = df['bb_middle'] + 2 * bb_std
-    df['bb_lower'] = df['bb_middle'] - 2 * bb_std
-    df['tr'] = np.maximum(df['high_price'] - df['low_price'],
-               np.maximum(abs(df['high_price'] - df['close_price'].shift(1)),
-                          abs(df['low_price']  - df['close_price'].shift(1))))
-    df['atr'] = df['tr'].rolling(14).mean()
-    df['vwap'] = (df['close_price'] * df['volume']).cumsum() / (df['volume'].cumsum() + 1e-10)
-    obv = [0]
-    for i in range(1, len(df)):
-        if df['close_price'].iloc[i] > df['close_price'].iloc[i-1]:
-            obv.append(obv[-1] + df['volume'].iloc[i])
-        elif df['close_price'].iloc[i] < df['close_price'].iloc[i-1]:
-            obv.append(obv[-1] - df['volume'].iloc[i])
-        else:
-            obv.append(obv[-1])
-    df['obv'] = obv
-    low14  = df['low_price'].rolling(14).min()
-    high14 = df['high_price'].rolling(14).max()
-    df['stoch_k'] = 100 * (df['close_price'] - low14) / (high14 - low14 + 1e-10)
-    df['stoch_d'] = df['stoch_k'].rolling(3).mean()
-    df['adx']     = df['atr'].rolling(14).mean()
-    tp = (df['high_price'] + df['low_price'] + df['close_price']) / 3
-    df['cci']   = (tp - tp.rolling(20).mean()) / (0.015 * tp.rolling(20).std() + 1e-10)
-    df['willr'] = -100 * (high14 - df['close_price']) / (high14 - low14 + 1e-10)
-    df['roc']   = df['close_price'].pct_change(10) * 100
-    mf  = tp * df['volume']
-    pmf = mf.where(tp > tp.shift(1), 0).rolling(14).sum()
-    nmf = mf.where(tp < tp.shift(1), 0).rolling(14).sum()
-    df['mfi'] = 100 - (100 / (1 + pmf / (nmf + 1e-10)))
-    mfv = ((df['close_price'] - df['low_price']) - (df['high_price'] - df['close_price'])) / (df['high_price'] - df['low_price'] + 1e-10) * df['volume']
-    df['cmf'] = mfv.rolling(20).sum() / (df['volume'].rolling(20).sum() + 1e-10)
-    vol_ema12 = df['volume'].ewm(span=12).mean()
-    vol_ema26 = df['volume'].ewm(span=26).mean()
-    df['ppo']  = ((df['ema12'] - df['ema26']) / (df['ema26'] + 1e-10)) * 100
-    df['pvo']  = ((vol_ema12 - vol_ema26) / (vol_ema26 + 1e-10)) * 100
-    df['trix'] = df['close_price'].ewm(span=15).mean().pct_change() * 100
-    df['dpo']  = df['close_price'] - df['close_price'].shift(11).rolling(20).mean()
-    df['kst']  = df['roc'] + df['roc'].rolling(10).mean()
+    # Remove yfinance MultiIndex columns
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.droplevel(1)
+
+    # Reset index to bring Date as column
+    df = df.reset_index()
+
+    # Store symbol WITHOUT .NS for DB
+    df["symbol"] = normalize_symbol(yf_symbol)
+
+    # Rename columns to match DB schema
+    df = df.rename(columns={
+        "Date": "trade_date",
+        "Open": "open_price",
+        "Close": "close_price",
+        "High": "high_price",
+        "Low": "low_price",
+        "Volume": "volume"
+    })
+
+    # Keep only required columns
+    df = df[[
+        "symbol",
+        "trade_date",
+        "open_price",
+        "close_price",
+        "high_price",
+        "low_price",
+        "volume"
+    ]]
+
     return df
 
 
-def update_stock(symbol):
-    last_date = get_last_date(symbol)
-    if last_date is None:
-        logger.warning(f"No existing data for {symbol}, skipping")
-        return 0
 
-    today = datetime.now().date()
-    if last_date >= today - timedelta(days=1):
-        return 0
-
-    context_start = last_date - timedelta(days=90)
-
+def download_and_insert(symbol):
     try:
-        ticker = yf.Ticker(f"{symbol}.NS")
-        df_raw = ticker.history(
-            start=context_start.strftime('%Y-%m-%d'),
-            end=today.strftime('%Y-%m-%d')
+        with engine.begin() as conn:
+            last_date = get_last_trade_date(conn, symbol)
+
+        if last_date:
+            start = last_date + timedelta(days=1)
+        else:
+            start = pd.to_datetime(START_DATE)
+
+        if start.date() >= date.today():
+            logger.info(f"{symbol} already up to date")
+            return
+
+        logger.info(f"Downloading {symbol} from {start.date()}")
+
+        df = yf.download(
+            symbol,
+            start=start,
+            end=date.today() + timedelta(days=1),
+            progress=False,
+            auto_adjust=False
         )
 
-        if df_raw.empty:
-            logger.warning(f"No data from yfinance for {symbol}")
-            return 0
+        df = preprocess_yf_data(df, symbol)
 
-        df_raw = df_raw.reset_index()
-        df_raw.columns = [c[0] if isinstance(c, tuple) else c for c in df_raw.columns]
-        df_raw = df_raw.rename(columns={
-            'Date': 'trade_date', 'Open': 'open_price', 'High': 'high_price',
-            'Low': 'low_price', 'Close': 'close_price', 'Volume': 'volume'
-        })
-        df_raw['trade_date'] = pd.to_datetime(df_raw['trade_date']).dt.date
-        df_raw['symbol'] = symbol
-        df_raw = df_raw[['symbol', 'trade_date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume']].dropna()
+        if df.empty:
+            logger.warning(f"No data after preprocessing for {symbol}")
+            return
 
-        new_rows = df_raw[df_raw['trade_date'] > last_date].copy()
+        insert_sql = """
+            INSERT INTO stock_prices (
+                symbol,
+                trade_date,
+                open_price,
+                close_price,
+                high_price,
+                low_price,
+                volume
+            )
+            VALUES (
+                :symbol,
+                :trade_date,
+                :open_price,
+                :close_price,
+                :high_price,
+                :low_price,
+                :volume
+            )
+            ON CONFLICT (symbol, trade_date)
+            DO UPDATE SET
+                open_price  = EXCLUDED.open_price,
+                close_price = EXCLUDED.close_price,
+                high_price  = EXCLUDED.high_price,
+                low_price   = EXCLUDED.low_price,
+                volume      = EXCLUDED.volume;
+        """
 
-        if new_rows.empty:
-            return 0
+        with engine.begin() as conn:
+            conn.execute(text(insert_sql), df.to_dict("records"))
 
-        new_rows.to_sql('stock_prices', engine, if_exists='append', index=False)
-        return len(new_rows)
+        logger.info(f"Inserted {len(df)} rows for {symbol}")
 
-    except Exception as e:
-        logger.error(f"Error updating {symbol}: {e}")
-        return 0
+    except Exception:
+        logger.exception(f"Failed processing {symbol}")
+
+
+# =====================================================
+# MAIN EXECUTION
+# =====================================================
 
 def main():
-    logger.info("===== INCREMENTAL STOCK UPDATE STARTED =====")
-    symbols = get_symbols()
-    logger.info(f"Total symbols: {len(symbols)}")
+    logger.info("===== STOCK PRICE INGESTION STARTED =====")
 
-    total_new_rows = 0
-    updated_count  = 0
-    failed_count   = 0
+    with engine.connect() as conn:
+        symbols = get_symbols(conn)
 
-    for i, symbol in enumerate(symbols):
-        try:
-            new_rows = update_stock(symbol)
-            if new_rows > 0:
-                total_new_rows += new_rows
-                updated_count  += 1
-                logger.info(f"[{i+1}/{len(symbols)}] {symbol}: +{new_rows} rows")
-            time.sleep(0.5)
-        except Exception as e:
-            failed_count += 1
-            logger.error(f"[{i+1}/{len(symbols)}] {symbol}: FAILED - {e}")
-            time.sleep(1)
+    logger.info(f"Total symbols to process: {len(symbols)}")
 
-    logger.info(f"===== DONE | Updated: {updated_count} | New rows: {total_new_rows} | Failed: {failed_count} =====")
+    for symbol in symbols:
+        download_and_insert(symbol)
+
+        sleep_time = random.randint(SLEEP_MIN, SLEEP_MAX)
+        logger.info(f"Sleeping for {sleep_time} seconds\n")
+        time.sleep(sleep_time)
+
+    logger.info("===== STOCK PRICE INGESTION COMPLETED =====")
 
 
 if __name__ == "__main__":
