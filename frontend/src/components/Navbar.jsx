@@ -38,7 +38,7 @@ function Navbar() {
             <span className={`text-2xl font-bold ${
               theme === 'light' ? 'text-zinc-800' : 'text-zinc-200'
             } tracking-tight`}>
-              StockPredict
+              StockCast
             </span>
           </Link>
 
